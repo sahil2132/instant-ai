@@ -1,88 +1,140 @@
-import { useEffect, useRef } from 'react'
-import { Conversation } from '../hooks/useChat'
-import { Message } from './Message'
-import { InputBar } from './InputBar'
+import { useState, useEffect, useRef } from 'react'
+
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+}
 
 interface ChatWindowProps {
-  conversation: Conversation
-  isTyping: boolean
-  messagesLoading: boolean
-  onSend: (message: string) => void
-  onMenuOpen: () => void
+  conversationId: string
 }
 
-function TypingIndicator() {
-  return (
-    <div className="animate-fade-in flex justify-start mb-5">
-      <div className="bg-[#f8f9fb] dark:bg-transparent rounded-lg px-1 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] text-[#aaa] dark:text-[#8e8ea0] tracking-wide">AI is thinking</span>
-          <div className="flex items-center gap-[3px] mt-[1px]">
-            <div className="typing-dot w-[5px] h-[5px] rounded-full bg-[#c0c0c0] dark:bg-[#555]" />
-            <div className="typing-dot w-[5px] h-[5px] rounded-full bg-[#c0c0c0] dark:bg-[#555]" />
-            <div className="typing-dot w-[5px] h-[5px] rounded-full bg-[#c0c0c0] dark:bg-[#555]" />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+export default function ChatWindow({ conversationId }: ChatWindowProps) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-export function ChatWindow({ conversation, isTyping, messagesLoading, onSend, onMenuOpen }: ChatWindowProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const API_BASE = 'http://localhost:3001/api'
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [conversation.messages.length, isTyping])
+    fetchMessages()
+  }, [conversationId])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const fetchMessages = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to fetch messages')
+      const data = await res.json()
+      setMessages(data.messages || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load messages')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || sending) return
+
+    const userMessage = input.trim()
+    setInput('')
+    setSending(true)
+    setError('')
+
+    try {
+      const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+        credentials: 'include',
+      })
+
+      if (!res.ok) throw new Error('Failed to send message')
+      const data = await res.json()
+      setMessages(data.messages || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send message')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center flex-1">Loading conversation...</div>
+  }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#212121] overflow-hidden">
-      {/* Mobile top bar */}
-      <div className="md:hidden h-12 border-b border-[#D9D9D9] dark:border-[#383838] flex items-center px-4 gap-3 flex-shrink-0">
-        <button
-          onClick={onMenuOpen}
-          className="p-1.5 -ml-1.5 text-[#999] dark:text-[#8e8ea0] hover:text-[#0D0D0D] dark:hover:text-[#ececec] transition-colors"
-          aria-label="Open sidebar"
-        >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path
-              d="M2 5h14M2 9h14M2 13h14"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-        <span className="text-[13px] font-medium text-[#0D0D0D] dark:text-[#ececec]">{conversation.title}</span>
-      </div>
-
-      {/* Message thread */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-6 pb-2">
-        {messagesLoading ? (
-          <div className="h-full flex items-center justify-center pb-16">
-            <div className="flex items-center gap-[5px]">
-              <div className="typing-dot w-[6px] h-[6px] rounded-full bg-[#d0d0d0] dark:bg-[#444]" />
-              <div className="typing-dot w-[6px] h-[6px] rounded-full bg-[#d0d0d0] dark:bg-[#444]" />
-              <div className="typing-dot w-[6px] h-[6px] rounded-full bg-[#d0d0d0] dark:bg-[#444]" />
-            </div>
+    <div className="flex flex-col h-full bg-white">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            <p>Start a conversation by sending a message</p>
           </div>
         ) : (
           <>
-            {conversation.messages.length === 0 && !isTyping && (
-              <div className="h-full flex flex-col items-center justify-center pb-16 select-none">
-                <p className="text-[13px] text-[#ccc] dark:text-[#555] tracking-wide">Start a new conversation</p>
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-md px-4 py-2 rounded-lg ${
+                    msg.role === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-800'
+                  }`}
+                >
+                  <p className="text-sm">{msg.content}</p>
+                  <p className="text-xs mt-1 opacity-70">
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
               </div>
-            )}
-            {conversation.messages.map(msg => (
-              <Message key={msg.id} message={msg} />
             ))}
-            {isTyping && <TypingIndicator />}
-            <div ref={bottomRef} className="h-1" />
+            <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
-      <InputBar onSend={onSend} disabled={isTyping} />
+      {error && (
+        <div className="px-6 py-3 bg-red-100 border-b border-red-300 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
+      <div className="p-6 border-t border-gray-200 bg-white">
+        <form onSubmit={handleSendMessage} className="flex gap-3">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            disabled={sending}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+          />
+          <button
+            type="submit"
+            disabled={sending || !input.trim()}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg transition"
+          >
+            {sending ? 'Sending...' : 'Send'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
