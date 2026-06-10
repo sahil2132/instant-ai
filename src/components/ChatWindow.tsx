@@ -27,7 +27,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, sending])
 
   const fetchMessages = async () => {
     try {
@@ -74,49 +74,72 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center flex-1">Loading conversation...</div>
+    return (
+      <div className="flex items-center justify-center flex-1 bg-slate-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-700 mb-3"></div>
+          <p className="text-slate-600">Loading conversation...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-slate-50">
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <p>Start a conversation by sending a message</p>
+        {messages.length === 0 && !sending ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-slate-500 text-lg">Start a conversation by sending a message</p>
+              <p className="text-slate-400 text-sm mt-2">The AI assistant will respond instantly</p>
+            </div>
           </div>
         ) : (
           <>
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex message-animation ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-md px-4 py-2 rounded-lg ${
+                  className={`max-w-md px-4 py-3 rounded-xl shadow-sm ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-800'
+                      ? 'bg-slate-700 text-white'
+                      : 'bg-white text-slate-900 border border-slate-200'
                   }`}
                 >
-                  <p className="text-sm">{msg.content}</p>
-                  <p className="text-xs mt-1 opacity-70">
+                  <p className="text-sm leading-relaxed">{msg.content}</p>
+                  <p className={`text-xs mt-2 ${msg.role === 'user' ? 'text-slate-300' : 'text-slate-400'}`}>
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </p>
                 </div>
               </div>
             ))}
+            {sending && (
+              <div className="flex justify-start message-animation">
+                <div className="bg-white text-slate-900 px-4 py-3 rounded-xl border border-slate-200 shadow-sm">
+                  <div className="flex gap-1">
+                    <span className="typing-indicator">
+                      <span className="inline-block w-2 h-2 bg-slate-400 rounded-full"></span>
+                      <span className="inline-block w-2 h-2 bg-slate-400 rounded-full ml-1"></span>
+                      <span className="inline-block w-2 h-2 bg-slate-400 rounded-full ml-1"></span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
       {error && (
-        <div className="px-6 py-3 bg-red-100 border-b border-red-300 text-red-700 text-sm">
+        <div className="px-6 py-3 bg-red-50 border-t border-red-200 text-red-700 text-sm">
           {error}
         </div>
       )}
 
-      <div className="p-6 border-t border-gray-200 bg-white">
+      <div className="p-6 border-t border-slate-200 bg-white">
         <form onSubmit={handleSendMessage} className="flex gap-3">
           <input
             type="text"
@@ -124,14 +147,14 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
             disabled={sending}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+            className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent disabled:bg-slate-100 disabled:text-slate-500"
           />
           <button
             type="submit"
             disabled={sending || !input.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 px-6 rounded-lg transition"
+            className="bg-slate-700 hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold py-2 px-6 rounded-lg transition duration-200"
           >
-            {sending ? 'Sending...' : 'Send'}
+            {sending ? '⏳ Waiting...' : 'Send'}
           </button>
         </form>
       </div>
