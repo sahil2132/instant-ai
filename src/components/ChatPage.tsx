@@ -19,7 +19,7 @@ export default function ChatPage({ user, onLogout }: ChatPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const API_BASE = 'http://localhost:3001/api'
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
   useEffect(() => {
     fetchConversations()

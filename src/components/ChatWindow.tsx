@@ -19,7 +19,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
   const [error, setError] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const API_BASE = 'http://localhost:3001/api'
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
   useEffect(() => {
     fetchMessages()
