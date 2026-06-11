@@ -57,6 +57,14 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
     setSending(true)
     setError('')
 
+    const optimisticMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: userMessage,
+      timestamp: new Date().toISOString(),
+    }
+    setMessages((prev) => [...prev, optimisticMessage])
+
     try {
       const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
         method: 'POST',
@@ -70,6 +78,7 @@ export default function ChatWindow({ conversationId }: ChatWindowProps) {
       setMessages(data.messages || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message')
+      setMessages((prev) => prev.filter((msg) => msg.id !== optimisticMessage.id))
     } finally {
       setSending(false)
     }
