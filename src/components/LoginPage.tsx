@@ -24,8 +24,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
-      const res = await fetch(`${apiBase}/auth/login`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      const apiPrefix = import.meta.env.VITE_API_PREFIX || '/api'
+      const res = await fetch(`${apiUrl}${apiPrefix}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
